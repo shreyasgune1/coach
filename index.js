@@ -1,22 +1,20 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const { GoogleGenAI } = require("@google/genai"); 
+const { GoogleGenAI } = require("@google/genai"); // Official 2026 SDK
 const cron = require('node-cron');
 
 // 1. INITIALIZE GEMINI 3
-// The new SDK handles the 2026 models natively
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_KEY });
+// The SDK automatically looks for GEMINI_API_KEY in your environment
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const SYSTEM_PROMPT = `You are Shreyas's personal AI coach. 
-Context: 36yo developer, building a UPSC quiz app in Laravel, learning German, and focusing on fitness. 
-Tone: Supportive, witty, and concise. Always start replies with 🤖.`;
+const SYSTEM_PROMPT = "You are Shreyas's personal AI coach. 36yo, Laravel/React dev, UPSC aspirant, German learner. Keep it supportive, witty, and always start your reply with 🤖.";
 
-// 2. WHATSAPP CLIENT (Hardened for Railway)
+// 2. WHATSAPP CLIENT SETUP (Server-Optimized)
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth(), // Persistent session
     puppeteer: {
-        // Railway provides the Chrome path via environment variables in the Dockerfile
+        // Use the path provided in Railway variables, fallback to null for local
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
         headless: true,
         args: [
@@ -33,74 +31,67 @@ const client = new Client({
 });
 
 /**
- * 3. THE BRAIN (Gemini 3 Logic)
+ * THE MESSAGE LISTENER
  */
-async function generateCoachResponse(userMessage) {
-    try {
-        const result = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
-            contents: userMessage,
-            config: {
-                systemInstruction: SYSTEM_PROMPT,
-                temperature: 1.0, // Recommended for Gemini 3
-            },
-        });
-        return result.text;
-    } catch (err) {
-        console.error("❌ Gemini API Error:", err.message);
-        return "My brain hit a snag. Check the logs!";
-    }
-}
-
-/**
- * 4. WHATSAPP EVENT LISTENERS
- */
-client.on('qr', qr => {
-    // On Railway, you will view this in the "View Logs" tab
-    console.log('--- SCAN THIS QR CODE IN YOUR RAILWAY LOGS ---');
-    qrcode.generate(qr, { small: true });
-});
-
-client.on('ready', () => {
-    console.log('✅ AGENT LIVE: Your coach is now running 24/7 on Railway.');
-});
-
 client.on('message_create', async (msg) => {
-    // 1. Prevent the bot from replying to itself
+    // Log for Railway terminal debugging
+    console.log(`[EVENT] From: ${msg.from} | To: ${msg.to} | Body: ${msg.body} | fromMe: ${msg.fromMe}`);
+
+    // 1. LOOP GUARD: Ignore messages starting with our bot emoji
     if (msg.body.startsWith("🤖")) return;
 
-    // 2. Identification Logic for "Message Yourself" (LID & Phone Number)
+    // 2. SELF-CHAT DETECTION: Target your number or LID
     const myNumber = process.env.MY_NUMBER;
-    const isMe = msg.from.includes(myNumber) || msg.to.includes(myNumber) || msg.to.includes('lid');
-
+    const isMe = msg.from.includes(myNumber) || msg.to.includes(myNumber) || msg.to.includes('lid') || msg.from.includes('lid');
+    
     if (isMe && !msg.from.includes('@g.us')) {
         const triggers = ["laravel", "hey", "hi", "coach", "german", "upsc", "fitness", "joke"];
         if (triggers.some(t => msg.body.toLowerCase().includes(t))) {
             
-            console.log(`💬 Processing request from Shreyas: "${msg.body}"`);
-            const response = await generateCoachResponse(msg.body);
+            console.log(`🎯 Trigger Detected! Calling Gemini 3...`);
             
-            // Ensure the persona prefix is there
-            const finalReply = response.startsWith("🤖") ? response : "🤖 " + response;
-            
-            await client.sendMessage(msg.from, finalReply);
-            console.log("✅ Response delivered.");
+            try {
+                // --- OFFICIAL 2026 SYNTAX ---
+                const result = await ai.models.generateContent({
+                    model: "gemini-3-flash-preview", 
+                    contents: msg.body,
+                    config: {
+                        systemInstruction: SYSTEM_PROMPT,
+                        temperature: 1.0
+                    },
+                });
+
+                // Get result text directly from the response object
+                const responseText = result.text;
+                
+                await client.sendMessage(msg.from, "🤖 " + responseText);
+                console.log("✅ Replied successfully.");
+                
+            } catch (err) {
+                console.error("❌ Gemini API Error:", err.message);
+            }
         }
     }
 });
 
-/**
- * 5. SCHEDULED CHECK-INS (10:00 AM IST)
- */
-cron.schedule('0 10 * * *', async () => {
-    try {
-        const motivation = await generateCoachResponse("Give Shreyas a 1-sentence witty motivation for his Laravel and UPSC goals today.");
-        const myChatId = `${process.env.MY_NUMBER}@c.us`;
-        await client.sendMessage(myChatId, motivation.startsWith("🤖") ? motivation : "🤖 " + motivation);
-        console.log("⏰ Morning motivation sent!");
-    } catch (e) {
-        console.error("Cron Error:", e.message);
-    }
+// 3. WHATSAPP SYSTEM EVENTS
+client.on('qr', qr => {
+    console.log('--- SCAN THE QR CODE IN RAILWAY LOGS ---');
+    qrcode.generate(qr, { small: true });
 });
 
-client.initialize();
+client.on('ready', () => {
+    console.log('✅ AGENT ONLINE: Standing by for Shreyas.');
+});
+
+// 4. DAILY MOTIVATION (10:00 AM IST)
+cron.schedule('0 10 * * *', async () => {
+    try {
+        const result = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: "Give Shreyas a 1-sentence witty motivation for his Laravel coding.",
+            config: { systemInstruction: SYSTEM_PROMPT }
+        });
+        const myChatId = `${process.env.MY_NUMBER}@c.us`;
+        await client.sendMessage(myChatId, "🤖 " + result.text);
+    } catch (e) { console.error("
