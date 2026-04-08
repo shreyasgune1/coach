@@ -3,18 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node --max-old-space-size=450 index.js"
+    "start": "node index.js"
   },
-  "keywords": [],
-  "author": "Shreyas",
-  "license": "ISC",
-  "description": "24/7 AI Coach",
   "dependencies": {
     "@google/genai": "latest",
     "dotenv": "latest",
     "node-cron": "latest",
-    "puppeteer": "latest",
-    "qrcode-terminal": "latest",
-    "whatsapp-web.js": "latest"
+    "node-telegram-bot-api": "latest"
   }
 }

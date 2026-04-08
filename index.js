@@ -1,104 +1,66 @@
 require("dotenv").config();
-const { Client, LocalAuth } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
-const { GoogleGenAI } = require("@google/genai"); 
+const TelegramBot = require("node-telegram-bot-api");
+const { GoogleGenAI } = require("@google/genai");
 const cron = require("node-cron");
 
-// 1. INITIALIZE GEMINI 3 (2026 SDK)
+// 1. INITIALIZE GEMINI & TELEGRAM
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
 const SYSTEM_PROMPT = "You are a personal AI coach. Context: 38yo dev, UPSC aspirant, learning German. Tone: Witty and supportive. Always start with 🤖.";
 
-// 2. WHATSAPP CLIENT (Memory-Optimized)
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--shm-size=3gb",
-            "--disable-blink-features=AutomationControlled",
-            "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-        ]
+// We will store your Chat ID here once you send the first message, 
+// so the Cron job knows where to send the morning motivation.
+let myChatId = null; 
+
+// 2. MESSAGE LISTENER
+bot.on("message", async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+
+    // Save your chat ID automatically on the first message
+    if (!myChatId) {
+        myChatId = chatId;
+        console.log(`[LOG] Registered owner Chat ID: ${myChatId}`);
+    }
+
+    if (!text) return; // Ignore stickers/photos for now
+
+    console.log(`[LOG] Received: "${text}"`);
+
+    // Telegram shows "typing..." status while Gemini thinks!
+    bot.sendChatAction(chatId, "typing");
+
+    try {
+        const result = await ai.models.generateContent({
+            model: "gemini-3-flash-preview", 
+            contents: text,
+            config: { systemInstruction: SYSTEM_PROMPT, temperature: 1.0 },
+        });
+
+        const responseText = result.text.startsWith("🤖") ? result.text : "🤖 " + result.text;
+        await bot.sendMessage(chatId, responseText);
+        
+    } catch (err) {
+        console.error("❌ Gemini Error:", err.message);
+        bot.sendMessage(chatId, "🤖 Oops, my brain glitched. Try again!");
     }
 });
 
-// 3. MESSAGE LISTENER
-client.on("message_create", async (msg) => {
-    if (msg.body.startsWith("🤖")) return;
-
-    const myNumber = process.env.MY_NUMBER; 
-    const isMe = msg.fromMe || 
-                 msg.from.includes(myNumber) || 
-                 msg.to.includes(myNumber) || 
-                 msg.from.includes("lid") || 
-                 msg.to.includes("lid");
-
-    if (isMe && !msg.from.includes("@g.us")) {
-        const triggers = ["laravel", "hey", "hi", "coach", "german", "upsc", "fitness", "joke", "test"];
-        if (triggers.some(t => msg.body.toLowerCase().includes(t))) {
-            console.log("🎯 Trigger matched.");
-            try {
-                const result = await ai.models.generateContent({
-                    model: "gemini-3-flash-preview", 
-                    contents: msg.body,
-                    config: { systemInstruction: SYSTEM_PROMPT, temperature: 1.0 },
-                });
-                const responseText = result.text.startsWith("🤖") ? result.text : "🤖 " + result.text;
-                await client.sendMessage(msg.from, responseText);
-                console.log("✅ Sent.");
-            } catch (err) {
-                console.error("❌ Gemini Error:", err.message);
-            }
-        }
-    }
-});
-
-// 4. CONNECTION LOGIC (With 3-Second Delay for Pairing)
-client.on("qr", async (qr) => {
-    console.log("--- CONNECTION NEEDED ---");
-    
-    // Clean QR Link
-    const qrLink = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(qr);
-    console.log("👉 SCAN THIS QR LINK: " + qrLink);
-
-    // Pairing Code Request
-    const myNumber = process.env.MY_NUMBER;
-    if (myNumber) {
-        try {
-            console.log("⏳ Waiting 3 seconds for WhatsApp to load...");
-            // THE FIX: Wait 3000 milliseconds before asking for the code
-            await new Promise(resolve => setTimeout(resolve, 3000)); 
-            
-            console.log("👉 Requesting Pairing Code for: " + myNumber);
-            const code = await client.requestPairingCode(myNumber);
-            console.log("**************************************");
-            console.log("PAIRED CODE: " + code);
-            console.log("**************************************");
-        } catch (err) {
-            console.log("❌ Pairing request failed: " + err.message);
-        }
-    }
-});
-
-client.on("ready", () => {
-    console.log("✅ AGENT ONLINE");
-});
-
-// 5. CRON JOB
+// 3. DAILY CRON JOB
 cron.schedule("0 10 * * *", async () => {
+    if (!myChatId) return; // Don't run if you haven't messaged the bot yet
+    
     try {
         const result = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: "Give a 1-sentence witty motivation for a UPSC aspirant today.",
             config: { systemInstruction: SYSTEM_PROMPT }
         });
-        const myChatId = process.env.MY_NUMBER + "@c.us";
-        await client.sendMessage(myChatId, "🤖 " + result.text);
-    } catch (e) { console.error("Cron Error:", e.message); }
+        await bot.sendMessage(myChatId, "🤖 " + result.text);
+    } catch (e) { 
+        console.error("Cron Error:", e.message); 
+    }
 });
 
-client.initialize();
+console.log("✅ TELEGRAM AGENT ONLINE");
