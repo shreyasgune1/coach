@@ -11,16 +11,16 @@ const SYSTEM_PROMPT = "You are Shreyas's personal AI coach. 38yo, Laravel/React 
 
 // 2. WHATSAPP CLIENT (Optimized for Railway Nixpacks)
 const client = new Client({
-    authStrategy: new LocalAuth(), // Saves session to /app/.wwebjs_auth
+    authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
-        // No executablePath needed: Nixpacks finds Chrome automatically
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
-            '--shm-size=3gb'
+            // ADD THIS LINE BELOW: It tells WhatsApp "I am a normal Chrome user"
+            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
         ]
     }
 });
