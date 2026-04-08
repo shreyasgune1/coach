@@ -9,21 +9,22 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const SYSTEM_PROMPT = "You are Shreyas's personal AI coach. 38yo, Laravel/React dev, UPSC aspirant, German learner. Keep it supportive, witty, and always start your reply with 🤖.";
 
-// 2. WHATSAPP CLIENT (Nixpacks Optimized)
+// 2. WHATSAPP CLIENT (Hardened for Railway 2026)
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
-        // CRITICAL: No executablePath. Let Nixpacks handle the location.
+        // WE ARE HARD-CODING THIS TO UNDEFINED
+        // This forces Puppeteer to ignore Railway's variables and find its own Chrome
+        executablePath: undefined, 
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-gpu'
+            '--shm-size=3gb' // Gives the browser more "breathing room"
         ]
     }
 });
-
 /**
  * THE MESSAGE LISTENER
  */
