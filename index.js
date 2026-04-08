@@ -1,4 +1,7 @@
-require("dotenv").config();
+if (process.env.NODE_ENV !== 'production') {
+    require("dotenv").config();
+}
+
 const TelegramBot = require("node-telegram-bot-api");
 const { GoogleGenAI } = require("@google/genai");
 const cron = require("node-cron");
