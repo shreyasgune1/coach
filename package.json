@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node --max-old-space-size=450 index.js"
   },
+  "keywords": [],
+  "author": "Shreyas",
+  "license": "ISC",
+  "description": "24/7 AI Coach",
   "dependencies": {
     "@google/genai": "latest",
     "dotenv": "latest",
