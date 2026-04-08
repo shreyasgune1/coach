@@ -57,13 +57,10 @@ client.on("message_create", async (msg) => {
     }
 });
 
-// 4. CONNECTION LOGIC (Line 70 and below - Rewritten for safety)
+// 4. CONNECTION LOGIC (With 3-Second Delay for Pairing)
 client.on("qr", async (qr) => {
     console.log("--- CONNECTION NEEDED ---");
     
-    // Fallback QR in terminal
-    qrcode.generate(qr, { small: true });
-
     // Clean QR Link
     const qrLink = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(qr);
     console.log("👉 SCAN THIS QR LINK: " + qrLink);
@@ -72,13 +69,17 @@ client.on("qr", async (qr) => {
     const myNumber = process.env.MY_NUMBER;
     if (myNumber) {
         try {
+            console.log("⏳ Waiting 3 seconds for WhatsApp to load...");
+            // THE FIX: Wait 3000 milliseconds before asking for the code
+            await new Promise(resolve => setTimeout(resolve, 3000)); 
+            
             console.log("👉 Requesting Pairing Code for: " + myNumber);
             const code = await client.requestPairingCode(myNumber);
             console.log("**************************************");
             console.log("PAIRED CODE: " + code);
             console.log("**************************************");
         } catch (err) {
-            console.log("Pairing request failed. Use the QR link instead.");
+            console.log("❌ Pairing request failed: " + err.message);
         }
     }
 });
