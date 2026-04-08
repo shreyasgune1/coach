@@ -1,3 +1,9 @@
+// Safe variable check (Prints true/false, not the actual tokens)
+console.log("--- DEBUG BOOT ---");
+console.log("Telegram Token visible to Node?", !!process.env.TELEGRAM_BOT_TOKEN);
+console.log("Gemini Token visible to Node?", !!process.env.GEMINI_API_KEY);
+console.log("------------------");
+
 if (process.env.NODE_ENV !== 'production') {
     require("dotenv").config();
 }
