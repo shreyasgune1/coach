@@ -2,25 +2,26 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class GeminiService {
     constructor(apiKey) {
-        // Use the official class name
         this.genAI = new GoogleGenerativeAI(apiKey);
         
-        // Use the Gemini 3 Flash model as per our 2026 specs
+        // We define the system instruction HERE during model initialization
+        // The SDK requires this specific object structure
         this.model = this.genAI.getGenerativeModel({ 
-            model: "gemini-3-flash" 
+            model: "gemini-1.5-flash", // Use 1.5-flash for the most stable 2026 performance
         });
     }
 
     async generateResponse(userInput, systemPrompt) {
         try {
-            // We include the system instructions as part of the model configuration
-            // or pass them in the content. For 2026 SDK, we can use generateContent.
-            const chat = this.model.startChat({
-                history: [],
-                systemInstruction: systemPrompt,
+            // Correctly formatting the system instruction as a Content object
+            const modelWithSystem = this.genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }],
+                },
             });
 
-            const result = await chat.sendMessage(userInput);
+            const result = await modelWithSystem.generateContent(userInput);
             const response = await result.response;
             return response.text();
         } catch (error) {
