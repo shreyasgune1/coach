@@ -1,31 +1,26 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 
 class GeminiService {
     constructor(apiKey) {
-        this.genAI = new GoogleGenerativeAI(apiKey);
-        
-        // We define the system instruction HERE during model initialization
-        // The SDK requires this specific object structure
-        this.model = this.genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash", // Use 1.5-flash for the most stable 2026 performance
-        });
+        // The new SDK initializes with an object
+        this.client = new GoogleGenAI({ apiKey });
     }
 
     async generateResponse(userInput, systemPrompt) {
         try {
-            // Correctly formatting the system instruction as a Content object
-            const modelWithSystem = this.genAI.getGenerativeModel({
-                model: "gemini-1.5-flash",
-                systemInstruction: {
-                    parts: [{ text: systemPrompt }],
+            // The new generateContent method combines model and config
+            const response = await this.client.generateContent({
+                model: "gemini-2.0-flash", // Using the 2026 stable workhorse
+                contents: [{ role: "user", parts: [{ text: userInput }] }],
+                config: {
+                    systemInstruction: systemPrompt,
+                    temperature: 0.8,
                 },
             });
 
-            const result = await modelWithSystem.generateContent(userInput);
-            const response = await result.response;
             return response.text();
         } catch (error) {
-            console.error("❌ Gemini API Error:", error.message);
+            console.error("❌ Gemini Service Error:", error.message);
             throw new Error("AI_GENERATION_FAILED");
         }
     }
