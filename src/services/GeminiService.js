@@ -1,23 +1,23 @@
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 class GeminiService {
     constructor(apiKey) {
-        // The new SDK initializes with an object
-        this.client = new GoogleGenAI({ apiKey });
+        this.genAI = new GoogleGenerativeAI(apiKey);
     }
 
     async generateResponse(userInput, systemPrompt) {
         try {
-            // The new generateContent method combines model and config
-            const response = await this.client.generateContent({
-                model: "gemini-2.0-flash", // Using the 2026 stable workhorse
-                contents: [{ role: "user", parts: [{ text: userInput }] }],
-                config: {
-                    systemInstruction: systemPrompt,
-                    temperature: 0.8,
+            // Powered by Gemini 3 Flash Preview
+            const model = this.genAI.getGenerativeModel(
+                { 
+                    model: "gemini-3-flash-preview",
+                    systemInstruction: systemPrompt, 
                 },
-            });
+                { apiVersion: "v1beta" } 
+            );
 
+            const result = await model.generateContent(userInput);
+            const response = result.response;
             return response.text();
         } catch (error) {
             console.error("❌ Gemini Service Error:", error.message);
