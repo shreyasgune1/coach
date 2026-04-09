@@ -7,14 +7,11 @@ class GeminiService {
 
     async generateResponse(userInput, systemPrompt) {
         try {
-            // Powered by Gemini 3 Flash Preview
-            const model = this.genAI.getGenerativeModel(
-                { 
-                    model: "gemini-3-flash-preview",
-                    systemInstruction: systemPrompt, 
-                },
-                { apiVersion: "v1beta" } 
-            );
+            // Tactical fallback to stable model due to 3.0 Preview server load
+            const model = this.genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash",
+                systemInstruction: systemPrompt, 
+            });
 
             const result = await model.generateContent(userInput);
             const response = result.response;
