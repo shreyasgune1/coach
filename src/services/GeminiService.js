@@ -8,9 +8,9 @@ class GeminiService {
 
     async generateResponse(userInput, systemPrompt) {
         try {
-            // Note the correct syntax: this.client.models.generateContent
+            // Using the active 2026 model and the correct modern syntax
             const response = await this.client.models.generateContent({
-                model: "gemini-2.0-flash", // The highly stable, fast 2026 workhorse
+                model: "gemini-2.5-flash", 
                 contents: userInput,
                 config: {
                     systemInstruction: systemPrompt,
@@ -18,7 +18,7 @@ class GeminiService {
                 }
             });
 
-            // In the new SDK, text is a property, not a function ()
+            // In the modern SDK, text is a property, not a function
             return response.text; 
             
         } catch (error) {
